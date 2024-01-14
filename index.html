@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Page Application Using JS ASSIGNMENT 2</title>
+</head>
+<body onload="setup()">
+    <h1>Welcome to "Ecks" </h1>
+    <div id="login"></div>
+    <div id="error"></div>
+    <div id="posts"></div>
+    <table id="tweets"> 
+    <script>
+
+        //function that loads all the necassary info on the home page 
+        function setup(){
+            console.log('hello set up done!');
+            if(returnCookie()!=null){
+                newPost(returnCookie());
+                getTweets();
+            }
+            else{
+                document.getElementById("login").innerHTML = "<label for=\"name\">Name To Log in:</label><br>"
+                +"<input type=\"text\" id=\"name\" name=\"fname\"><br><br>"
+                +"<button onclick=\"loadDoc()\">Submit</button>";
+
+            }
+            
+        }
+
+        //initiates all the necassary html to create a new post 
+        function newPost(user){
+            console.log("here to create tweets that willblow your mind!");
+            document.getElementById("login").innerHTML ="<h2>what is on your mind "+user+" , create your tweet !!</h2>"+
+            "<textarea id=\"tweetContent\" rows=\"4\" cols=\"50\"></textarea>"+
+            "<button type=\"button\" onclick=\"postTweet()\">Post Tweet</button>"
+        }
+
+        //function that handles all the functionality when login button is clicked 
+        //sends a post request to server with login info 
+        //server then sends a cookie to the web browser 
+        function loadDoc(){
+            var uName = document.getElementById("name").value;
+            newPost(uName);
+            
+            var data =JSON.stringify({name : uName})
+            //should send post request to api/login to create the session cookie 
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/login', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    
+                    if (xhr.status === 200) {
+                        console.log('logged in successfully.');
+                        getTweets(); // show the tweets after logging in
+                    } else {
+                        if(xhr.status == 404){
+                            errorDisplay(xhr.status);
+                        }
+                        console.error('Failed to login. Status:', xhr.status);
+                    }
+                     
+                }
+            };
+            xhr.send(data);
+        }
+
+        function errorDisplay(status){
+            if(status == 404){
+                document.getElementById("error").innerHTML="<h2>Oh my God it is an error Call Rob for help!</h2>"
+            }
+        }
+
+        // Function to fetch tweets from the server
+        function getTweets() {
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET','/api/tweet', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    
+                        if (xhr.status === 200) {
+                            var tweets = JSON.parse(xhr.responseText);
+                            console.log(tweets)
+                            var tweetsContainer = document.getElementById('tweets');
+                            tweetsContainer.innerHTML = ''; // Clear previous tweets
+                            
+                            num =0;
+                            tweets.forEach(function (tweet) {
+                                console.log(tweet)
+                                var tweetElement = document.createElement('tr');
+                                tweetElement.innerHTML = '<td><textarea id=\"t'+num+'\">' + tweet.last_editor + ' says ' + tweet.content +'</textarea> <button id=\"b'+num+'\" onclick=\"editTweet(\'t'+num+'\', '+num+')\">EDIT!</button></td>';
+                                num++;
+                                tweetsContainer.appendChild(tweetElement);
+                            });
+                        } else {
+                            if(xhr.status == 404){
+                                errorDisplay(xhr.status);
+                            }
+                            console.error('Failed to fetch tweets. Status:', xhr.status);
+                        }
+                    
+                }
+            };
+            xhr.send(null);
+        }
+
+        //edit the tweet 
+        function editTweet(id, num){
+            console.log('im in the editTweet function')
+            console.log(id)
+            var tweetContent = document.getElementById(id).value;
+            
+            var data = JSON.stringify({last_editor:returnCookie() ,content: tweetContent });
+            console.log(data)
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', '/api/tweet/'+num+'', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    // callback(xhr.status, xhr.responseText);
+                    
+                    if (xhr.status === 200) {
+                        console.log('Tweet updated successfully.');
+                        getTweets(); // Refresh the tweets after posting
+                    } else {
+                        if(xhr.status == 404){
+                            errorDisplay(xhr.status);
+                        }
+                        console.error('Failed to update tweet. Status:', xhr.status);
+                    }
+                     
+                }
+            };
+            xhr.send(data);
+
+            getTweets();
+
+        }
+
+        //function that returns the session cookie created by set-Cookie header
+        function returnCookie(){
+            //while loop to check if there is a session cookie 
+            var cookies = document.cookie.split(';');
+            var cookieData = {};
+
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                var parts = cookie.split('=');
+                if (parts.length === 2) {
+                    var name = parts[0];
+                    var value = parts[1];
+                    cookieData[name] = value;
+                }
+            }
+            
+            return cookieData[name];
+        }
+
+        // Function to post a new tweet to the server
+        function postTweet() {
+            var tweetContent = document.getElementById('tweetContent').value;
+            console.log(tweetContent)
+            var data = JSON.stringify({ content: tweetContent });
+            console.log(data)
+
+            document.getElementById('tweetContent').value="";//clear the text
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/tweet', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    // callback(xhr.status, xhr.responseText);
+                    
+                    if (xhr.status === 200) {
+                        console.log('Tweet posted successfully.');
+                        getTweets(); // Refresh the tweets after posting
+                    } else {
+                        if(xhr.status == 404){
+                            errorDisplay(xhr.status);
+                        }
+                        console.error('Failed to post tweet. Status:', xhr.status);
+                    }
+                     
+                }
+            };
+            xhr.send(data);
+        }
+        
+    </script>
+</body>
+</html>
